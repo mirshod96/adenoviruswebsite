@@ -121,9 +121,29 @@ export class CanvasPlayer {
     // Begin preload buffer
     this.preloadUpcoming(sceneNum, this.targetFrame, 15);
     
+    // Force aggressive Garbage Collection to prevent Safari/Chrome RAM crashes
+    this.garbageCollect(this.targetScene, this.targetFrame);
+    
     if (!this.isRendering) {
       this.isRendering = true;
       requestAnimationFrame(() => this.renderLoop());
+    }
+  }
+
+  garbageCollect(activeScene, activeFrame) {
+    const buffer = 45; // Keep 45 frames surrounding our current spot
+    
+    for (const [sKey, sceneMap] of this.imageCache.entries()) {
+      for (const [fKey, img] of sceneMap.entries()) {
+        // Always preserve frame 0 of every scene as a baseline poster
+        if (fKey === 0) continue;
+        
+        // If it's outside the current scene, or outside our safely defined playback buffer
+        if (sKey !== activeScene || Math.abs(fKey - activeFrame) > buffer) {
+             img.src = ""; // Setting src to empty forces browser to discard the uncompressed Raw Bitmap
+             sceneMap.delete(fKey);
+        }
+      }
     }
   }
 

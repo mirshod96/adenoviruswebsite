@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>HyperVax: Arterial Gipertenziya Immunoterapiyasi</title>
+    <!-- Fonts: Montserrat for titles, Inter for body -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css">
+  </head>
+  <body>
+    <!-- Start Experience Overlay -->
+    <div id="start-overlay" class="start-overlay">
+      <div class="start-content">
+        <h1>HyperVax Immunoterapiyasi</h1>
+        <p>Barcha imkoniyatlardan foydalanish uchun ovozni yoqing</p>
+        <div id="loader-progress">Yuklanmoqda: 0%</div>
+        <button id="btn-start" class="btn-primary" style="display: none;">Boshlash</button>
+      </div>
+    </div>
+
+    <!-- Fixed Elements -->
+    <canvas id="hero-canvas"></canvas>
+    <header class="site-header">
+      <img src="/public/logo.png" alt="HyperVax Logo" class="logo" />
+    </header>
+
+    <div class="audio-control" id="audio-toggle">
+      <span class="icon">🔊</span>
+    </div>
+
+    <!-- Scroll Narrative Container -->
+    <main id="scrolly-container">
+      
+      <!-- Stage I -->
+      <section class="stage-section" id="stage-1" data-scene="1">
+        <div class="glass-card">
+          <p class="stage-label">I-Bosqich: Adenovirus Strukturasi</p>
+          <h2>Adenovirus — Xavfsiz tashuvchi</h2>
+          <p>Vaksina asosi haqida umumiy ma'lumot.</p>
+        </div>
+      </section>
+      
+      <section class="stage-section" id="stage-2" data-scene="2">
+        <div class="glass-card">
+          <p class="stage-label">I-Bosqich: Adenovirus Strukturasi</p>
+          <h2>Gekson va Penton oqsillari</h2>
+          <p>Virus qobig'ining molekulyar aniqligi.</p>
+        </div>
+      </section>
+
+      <section class="stage-section" id="stage-3" data-scene="3">
+        <div class="glass-card">
+          <p class="stage-label">I-Bosqich: Adenovirus Strukturasi</p>
+          <h2>Tola (Fiber) tuzilishi</h2>
+          <p>Hujayraga birikish mexanizmi.</p>
+        </div>
+      </section>
+
+      <!-- Stage II -->
+      <section class="stage-section" id="stage-4" data-scene="4">
+        <div class="glass-card">
+          <p class="stage-label">II-Bosqich: HyperVax Muhandisligi</p>
+          <h2>Kapsid modifikatsiyasi</h2>
+          <p>Virusning tabiiy qobig'ini o'zgartirish.</p>
+        </div>
+      </section>
+
+      <section class="stage-section" id="stage-5" data-scene="5">
+        <div class="glass-card">
+          <p class="stage-label">II-Bosqich: HyperVax Muhandisligi</p>
+          <h2>Angiotenzin II qoplamasi</h2>
+          <p>Virus sirtiga gormon peptidlarini o'rnatish.</p>
+        </div>
+      </section>
+
+      <section class="stage-section" id="stage-6" data-scene="6">
+        <div class="glass-card">
+          <p class="stage-label">II-Bosqich: HyperVax Muhandisligi</p>
+          <h2>HyperVax Monovaksinasi</h2>
+          <p>Tayyor immunovaksina zarrasi.</p>
+        </div>
+      </section>
+
+      <!-- Stage III -->
+      <section class="stage-section" id="stage-7" data-scene="7">
+        <div class="glass-card">
+          <p class="stage-label">III-Bosqich: Vaksina Ta'siri</p>
+          <h2>Qon oqimidagi harakat</h2>
+          <p>Vaksinaning organizm bo'ylab tarqalishi.</p>
+        </div>
+      </section>
+
+      <section class="stage-section" id="stage-8" data-scene="8">
+        <div class="glass-card">
+          <p class="stage-label">III-Bosqich: Vaksina Ta'siri</p>
+          <h2>Retseptorlar bilan aloqa</h2>
+          <p>Vaksina va hujayra uchrashuvi.</p>
+        </div>
+      </section>
+
+      <section class="stage-section" id="stage-9" data-scene="9">
+        <div class="glass-card">
+          <p class="stage-label">III-Bosqich: Vaksina Ta'siri</p>
+          <h2>Endotsitoz</h2>
+          <p>Hujayraning vaksina zarrasini qabul qilishi.</p>
+        </div>
+      </section>
+
+      <!-- Stage IV -->
+      <section class="stage-section" id="stage-10" data-scene="10">
+        <div class="glass-card">
+          <p class="stage-label">IV-Bosqich: Immun Javob</p>
+          <h2>Antitelalar ishlab chiqarilishi</h2>
+          <p>Organizmning himoya reaktsiyasi.</p>
+        </div>
+      </section>
+
+      <section class="stage-section" id="stage-11" data-scene="11">
+        <div class="glass-card">
+          <p class="stage-label">IV-Bosqich: Immun Javob</p>
+          <h2>Gormonlarni bloklash</h2>
+          <p>Antitelalar Angiotenzin II ni neytrallashi.</p>
+        </div>
+      </section>
+
+      <section class="stage-section" id="stage-12" data-scene="12">
+        <div class="glass-card">
+          <p class="stage-label">IV-Bosqich: Immun Javob</p>
+          <h2>Qon bosimi me'yorlashishi</h2>
+          <p>Qon tomirlarining kengayishi va yakuniy natija.</p>
+        </div>
+      </section>
+      
+      <!-- Ending pad so the last section can be fully scrolled -->
+      <div class="scroll-pad"></div>
+
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

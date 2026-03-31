@@ -1,0 +1,239 @@
+:root {
+  --primary-color: #00ffcc;
+  --text-color: #ffffff;
+  --bg-color: #000000;
+  --font-title: 'Montserrat', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fixed Canvas Background */
+#hero-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  /* Instead of CSS object-fit on canvas which stretches pixels, 
+     we will handle the aspect ratio "cover" logic in Javascript. */
+}
+
+/* Interactive Overlay Container */
+#scrolly-container {
+  position: relative;
+  z-index: 10;
+  width: 100vw;
+}
+
+/* Stage Sections - Each section acts as a scroll track for a specific scene */
+.stage-section {
+  position: relative;
+  height: 150vh; /* Provides scroll duration for the image sequence scrub */
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Content padded section to allow finishing the last scroll */
+.scroll-pad {
+  height: 50vh;
+}
+
+/* UI Elements */
+.site-header {
+  position: fixed;
+  top: 30px;
+  left: 40px;
+  z-index: 100;
+}
+
+.logo {
+  max-width: 180px;
+  filter: drop-shadow(0px 2px 10px rgba(0,0,0,0.5));
+}
+
+.audio-control {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  z-index: 100;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: background 0.3s ease;
+}
+
+.audio-control:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.audio-control .icon {
+  font-size: 20px;
+}
+
+/* Glassmorphism Cards */
+.glass-card {
+  position: fixed;
+  top: auto;
+  bottom: 8vh;
+  left: 4vw;
+  width: 30%;
+  max-width: 400px;
+  padding: 25px;
+  background: rgba(15, 15, 20, 0.6); /* 60% opacity as requested */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+  /* Text Styles */
+  color: #fff;
+  opacity: 0; /* Handled by GSAP */
+  pointer-events: none; /* Let scroll events pass through */
+}
+
+/* Typography Base */
+.stage-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--primary-color);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+h2 {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  font-weight: 800;
+}
+
+p {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+/* Mobile Responsiveness */
+@media screen and (max-width: 768px) {
+  .site-header {
+    top: 20px;
+    left: 20px;
+  }
+  
+  .logo {
+    max-width: 140px;
+  }
+  
+  .glass-card {
+    /* Fixed at bottom left for mobile, taking up more width */
+    bottom: 5vh;
+    left: 4vw;
+    width: 90%;
+    max-width: none;
+    padding: 20px;
+  }
+  
+  h2 {
+    font-size: 1.3rem;
+  }
+  
+  p {
+    font-size: 0.9rem;
+  }
+  
+  .audio-control {
+    bottom: 20px;
+    right: 20px;
+    left: auto;
+  }
+  
+  .stage-section {
+    height: 120vh;
+  }
+}
+
+/* Start Overlay Styling */
+.start-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg-color);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.start-content h1 {
+  font-family: var(--font-title);
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: var(--primary-color);
+}
+
+.start-content p {
+  font-size: 1.1rem;
+  margin-bottom: 40px;
+  color: #aaa;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: #000;
+  border: none;
+  padding: 15px 40px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border-radius: 30px;
+  cursor: pointer;
+  font-family: var(--font-title);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+}
+
+#loader-progress {
+  font-family: var(--font-title);
+  font-size: 1.4rem;
+  color: var(--primary-color);
+  margin-top: 10px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}

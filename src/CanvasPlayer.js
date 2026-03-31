@@ -19,7 +19,7 @@ export class CanvasPlayer {
 
   async loadMetadata() {
     try {
-      const res = await fetch('/public/scenes_meta.json');
+      const res = await fetch('/scenes_meta.json');
       this.scenesMeta = await res.json();
       
       // Extract available scenes and eager load the first frame of every existing scene
@@ -99,7 +99,7 @@ export class CanvasPlayer {
     const img = new Image();
     // Use the actual filename from metadata
     const fileName = this.scenesMeta[sceneKey][frameIndex];
-    img.src = `/public/scenes/${sceneKey}/${fileName}`;
+    img.src = `/scenes/${sceneKey}/${fileName}`;
     img.decode().catch(() => {}); // Decode asynchronously for performance
     
     sceneCache.set(frameIndex, img);

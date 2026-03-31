@@ -9,7 +9,7 @@ export class AudioManager {
     // Load the 12 scene mp3s
     for (let i = 1; i <= 12; i++) {
        this.audioTracks[i] = new Howl({
-          src: [`/public/sound/${i}-scene.mp3`],
+          src: [`/sound/${i}-scene.mp3`],
           preload: true,
           volume: 0.8,
           loop: false

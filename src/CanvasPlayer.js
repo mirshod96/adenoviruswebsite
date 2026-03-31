@@ -1,12 +1,17 @@
 export class CanvasPlayer {
   constructor(canvasElement) {
     this.canvas = canvasElement;
-    this.ctx = this.canvas.getContext('2d', { alpha: false }); 
-    this.videos = {}; 
+    this.ctx = this.canvas.getContext('2d', { alpha: false }); // Optimize for no transparency
     this.scenesMeta = null;
+    this.imageCache = new Map();
 
     this.currentScene = 1;
-    this.isLooping = false;
+    this.currentFrame = 0;
+    
+    this.targetScene = 1;
+    this.targetFrame = 0;
+    
+    this.isRendering = false;
 
     this.resizeCanvas();
     window.addEventListener('resize', () => this.resizeCanvas());
@@ -16,50 +21,28 @@ export class CanvasPlayer {
     try {
       const res = await fetch('/scenes_meta.json');
       this.scenesMeta = await res.json();
-      
-      for (let i = 1; i <= 12; i++) {
-        const video = document.createElement('video');
-        video.src = `/video/${i}-scene.mp4`;
-        video.muted = true;
-        video.playsInline = true;
-        video.preload = 'auto'; 
-        video.style.display = 'none';
-        
-        // Critical iOS hack
-        video.load(); 
-
-        this.videos[i] = video;
-      }
-      
-      // Kick off constant tick
-      this.startRenderLoop();
     } catch (err) {
       console.error('Error loading scenes metadata:', err);
     }
   }
 
   async preloadCriticalFrames(onProgress) {
-    const mainVideo = this.videos[1];
-    if (!mainVideo) return;
+    if (!this.scenesMeta) return;
+
+    const sceneNum = 1;
+    // Preload extremely aggressively strictly for the crucial first initial animation run
+    const targetCount = Math.min(60, this.getFrameCount(sceneNum));
+    let loaded = 0;
 
     return new Promise((resolve) => {
-      let pct = 0;
-      const fakeProgress = setInterval(() => {
-         pct += 5;
-         if (pct <= 95) onProgress(pct);
-      }, 50);
-
-      const finish = () => {
-         clearInterval(fakeProgress);
-         onProgress(100);
-         resolve();
+      const checkDone = () => {
+        loaded++;
+        onProgress(Math.round((loaded / targetCount) * 100));
+        if (loaded >= targetCount) resolve();
       };
 
-      if (mainVideo.readyState >= 3) {
-         finish();
-      } else {
-         mainVideo.addEventListener('canplaythrough', finish, { once: true });
-         setTimeout(finish, 4000);
+      for (let i = 0; i < targetCount; i++) {
+         this.loadBlobFrame(sceneNum, i, checkDone);
       }
     });
   }
@@ -69,6 +52,9 @@ export class CanvasPlayer {
     this.canvas.width = window.innerWidth * dpr;
     this.canvas.height = window.innerHeight * dpr;
     this.ctx.scale(dpr, dpr);
+    
+    // Attempt redraw immediately
+    if (!this.isRendering && this.scenesMeta) this.renderCurrentFrame();
   }
 
   getFrameCount(sceneNum) {
@@ -77,50 +63,143 @@ export class CanvasPlayer {
     return this.scenesMeta[key].length;
   }
 
-  setFrame(sceneNum, frameIndex) {
-    this.currentScene = sceneNum;
-    const video = this.videos[sceneNum];
+  // Purely loads bitmapped GPU slices without DOM leakage bounds
+  loadBlobFrame(sceneNum, frameIndex, onCompleteFallback = null) {
+    const sceneKey = `${sceneNum}-scene`;
+    if (!this.scenesMeta || !this.scenesMeta[sceneKey]) {
+        if (onCompleteFallback) onCompleteFallback();
+        return null;
+    }
     
-    if (video) {
-        const timeInSeconds = frameIndex / 30;
-        // Prevent micro-stutters by rejecting minuscule delta floats
-        if (Math.abs(video.currentTime - timeInSeconds) > 0.01) {
-            video.currentTime = timeInSeconds;
-        }
+    if (frameIndex >= this.scenesMeta[sceneKey].length) {
+        if (onCompleteFallback) onCompleteFallback();
+        return null;
+    }
+
+    if (!this.imageCache.has(sceneKey)) {
+      this.imageCache.set(sceneKey, new Map());
+    }
+    const sceneCache = this.imageCache.get(sceneKey);
+
+    if (sceneCache.has(frameIndex)) {
+      const obj = sceneCache.get(frameIndex);
+      if (obj.state === 'ready' && obj.bitmap && onCompleteFallback) {
+         onCompleteFallback();
+      }
+      return obj;
+    }
+
+    const fileName = this.scenesMeta[sceneKey][frameIndex];
+    const url = `/scenes/${sceneKey}/${fileName}`;
+    
+    const frameObj = { state: 'loading', bitmap: null };
+    sceneCache.set(frameIndex, frameObj);
+
+    // Stream blob processing bypasses standard browser Image DOM memory leak queues completely
+    fetch(url)
+      .then(res => {
+         if (!res.ok) throw new Error("HTTP error " + res.status);
+         return res.blob();
+      })
+      .then(blob => createImageBitmap(blob))
+      .then(bitmap => {
+         // Is it still relevant/in cache? Or did we GC this while it was fetching?
+         if (sceneCache.has(frameIndex)) {
+            frameObj.state = 'ready';
+            frameObj.bitmap = bitmap;
+            if (onCompleteFallback) onCompleteFallback();
+            
+            // Critical async drawing sync
+            if (this.currentScene === sceneNum && this.currentFrame === frameIndex) {
+                 this.drawCover(bitmap);
+            }
+         } else {
+            // Memory was flushed during fetch loop (scrolled too fast!) — nuke it synchronously from GPU.
+            bitmap.close();
+            if (onCompleteFallback) onCompleteFallback();
+         }
+      })
+      .catch(err => {
+         frameObj.state = 'error';
+         if (onCompleteFallback) onCompleteFallback();
+      });
+
+    return frameObj;
+  }
+
+  setFrame(sceneNum, frameIndex) {
+    this.targetScene = sceneNum;
+    this.targetFrame = Math.floor(frameIndex);
+    
+    // Explicit forward caching sweep ensuring buttery frames down the wire
+    this.preloadUpcoming(sceneNum, this.targetFrame, 18);
+    
+    // Ruthless GPU Memory Wipe preventing Safari crashes dynamically
+    this.garbageCollect(this.targetScene, this.targetFrame);
+    
+    if (!this.isRendering) {
+      this.isRendering = true;
+      requestAnimationFrame(() => this.renderLoop());
     }
   }
 
-  startRenderLoop() {
-    if (this.isLooping) return;
-    this.isLooping = true;
-    
-    const tick = () => {
-       const video = this.videos[this.currentScene];
-       // readyState 2+ guarantees there is data for the current frame to draw
-       if (video && video.readyState >= 2) {
-           this.drawCover(video);
-       }
-       requestAnimationFrame(tick);
-    };
-    tick();
+  preloadUpcoming(sceneNum, startFrame, count) {
+    const total = this.getFrameCount(sceneNum);
+    for (let i = startFrame; i < startFrame + count && i < total; i++) {
+        this.loadBlobFrame(sceneNum, i);
+    }
   }
 
-  drawCover(video) {
+  garbageCollect(activeScene, activeFrame) {
+    const buffer = 45; // Strictly allow only 45 frames left-or-right to exist in memory
+    const activeSceneKey = `${activeScene}-scene`;
+    
+    for (const [sKey, sceneMap] of this.imageCache.entries()) {
+      for (const [fKey, obj] of sceneMap.entries()) {
+        // Retain 0 index for background/pause rendering fallback
+        if (fKey === 0) continue;
+        
+        if (sKey !== activeSceneKey || Math.abs(fKey - activeFrame) > buffer) {
+             if (obj.state === 'ready' && obj.bitmap) {
+                 // Synchronously instantly removes bitmap from GPU hardware! No lingering JS dependencies.
+                 obj.bitmap.close(); 
+             }
+             sceneMap.delete(fKey);
+        }
+      }
+    }
+  }
+
+  renderLoop() {
+    this.currentScene = this.targetScene;
+    this.currentFrame = this.targetFrame;
+    
+    this.renderCurrentFrame();
+    
+    this.isRendering = false;
+  }
+
+  renderCurrentFrame() {
+    const obj = this.loadBlobFrame(this.currentScene, this.currentFrame);
+    
+    if (!obj || obj.state !== 'ready' || !obj.bitmap) return; // Drawn asynchronously dynamically
+    
+    this.drawCover(obj.bitmap);
+  }
+
+  drawCover(bitmap) {
     const w = window.innerWidth;
     const h = window.innerHeight;
     
-    const vw = video.videoWidth || 1920; 
-    const vh = video.videoHeight || 1080;
+    const iw = bitmap.width;
+    const ih = bitmap.height;
     
-    if (vw === 0) return; 
-
-    // Calculate aspect ratio covering
-    const scale = Math.max(w / vw, h / vh);
+    const scale = Math.max(w / iw, h / ih);
     
-    const dx = (w - (vw * scale)) / 2;
-    const dy = (h - (vh * scale)) / 2;
+    const dx = (w - (iw * scale)) / 2;
+    const dy = (h - (ih * scale)) / 2;
     
     this.ctx.fillRect(0, 0, w, h); 
-    this.ctx.drawImage(video, dx, dy, vw * scale, vh * scale);
+    this.ctx.drawImage(bitmap, dx, dy, iw * scale, ih * scale);
   }
 }

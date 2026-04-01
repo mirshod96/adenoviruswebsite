@@ -36,15 +36,12 @@ export class ScrollManager {
           scrub: 1.0, 
           onUpdate: (self) => {
              if (self.isActive) {
-                // Continuous seamless frame tracking across boundary limits
-                this.canvasPlayer.setFrame(sceneNum, Math.round(proxy.frame));
+                const currentFrame = Math.round(proxy.frame);
+                this.canvasPlayer.setFrame(sceneNum, currentFrame);
+                
+                // Hardware interactive generative sound telemetry
+                this.audioManager.syncToFrame(sceneNum, currentFrame, self.getVelocity());
              }
-          },
-          onEnter: () => {
-             this.audioManager.playSceneAudio(sceneNum);
-          },
-          onEnterBack: () => {
-             this.audioManager.playSceneAudio(sceneNum);
           }
         }
       });

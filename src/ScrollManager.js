@@ -12,52 +12,88 @@ export class ScrollManager {
     this.initScrollTracks();
   }
 
+  async forceSceneLoad(sceneNum) {
+    // Only intercept if the scene isn't already the dominant loaded chunk
+    if (this.canvasPlayer.currentPreloadedScene === sceneNum) return;
+    
+    // HARD LOCK user intent
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    
+    // Halt any active auto-scroll
+    if (this.autoScrollTween) {
+        this.autoScrollTween.kill();
+        this.autoScrollTween = null;
+    }
+    
+    const loader = document.getElementById('scene-transition-loader');
+    const fill = document.getElementById('scene-transition-fill');
+    const pctTxt = document.getElementById('scene-transition-pct');
+    
+    if (loader) {
+        loader.style.visibility = 'visible';
+        loader.style.opacity = '1';
+        loader.style.pointerEvents = 'all';
+    }
+    
+    // CPU/Network wipe boundary crossing point
+    await this.canvasPlayer.preloadEntireScene(sceneNum, (pct) => {
+         if(fill) fill.style.width = `${pct}%`;
+         if(pctTxt) pctTxt.textContent = `${pct}%`;
+    });
+    
+    if (loader) {
+        loader.style.opacity = '0';
+        loader.style.pointerEvents = 'none';
+        setTimeout(() => {
+            loader.style.visibility = 'hidden';
+        }, 500); // Wait for transition CSS to finish
+    }
+    
+    // UNLOCK user scroll
+    document.body.style.overflow = prevOverflow;
+  }
+
   async initScrollTracks() {
-    // Wait until metadata is loaded
     await this.canvasPlayer.loadMetadata();
     
-    // We create a ScrollTrigger for each scene
     this.sections.forEach((section, index) => {
       const sceneNum = parseInt(section.dataset.scene);
       const frameCount = this.canvasPlayer.getFrameCount(sceneNum);
       
       const glassCard = section.querySelector('.glass-card');
       
-      if (frameCount === 0) {
-        console.warn(`No frames found for scene ${sceneNum}`);
-        return;
-      }
+      if (frameCount === 0) return;
 
-      // Proxy object used by GSAP to tween values easily
       const proxy = { frame: 0 };
       
-      // Image sequence scroll trigger track
       gsap.to(proxy, {
         frame: frameCount - 1,
-        snap: "frame", // Optional: snap to nearest integer for sharper playback
+        snap: "frame", 
         ease: "none",
         scrollTrigger: {
           trigger: section,
-          start: "top top", // When section top touches viewport top
-          end: "bottom top", // Plays across the section's height (150vh)
-          scrub: 1.0, // Buttery smooth interpolation mapping scroll to frame
+          start: "top top", 
+          end: "bottom top", 
+          scrub: 1.0, 
           onUpdate: (self) => {
-            if (self.isActive) {
-               // Render only when actively scrolling inside this trigger
-               this.canvasPlayer.setFrame(sceneNum, Math.round(proxy.frame));
-            }
+             // CRITICAL: Block rendering GSAP ticks for scenes that are functionally wiped!
+             // This prevents "flicker" while the glass loader covers the transition.
+             if (self.isActive && this.canvasPlayer.currentPreloadedScene === sceneNum) {
+                this.canvasPlayer.setFrame(sceneNum, Math.round(proxy.frame));
+             }
           },
           onEnter: () => {
+             this.forceSceneLoad(sceneNum);
              this.audioManager.playSceneAudio(sceneNum);
           },
           onEnterBack: () => {
+             this.forceSceneLoad(sceneNum);
              this.audioManager.playSceneAudio(sceneNum);
           }
         }
       });
       
-      // Glass card text fading animation
-      // Appears cleanly entering viewport, disappears cleanly exiting
       gsap.fromTo(glassCard, 
         { opacity: 0, y: 30 },
         {
@@ -65,9 +101,9 @@ export class ScrollManager {
           y: 0,
           scrollTrigger: {
             trigger: section,
-            start: "top 60%", // Start fading in when section reaches 60% viewport
-            end: "bottom 60%", // Finish full fade out loop when leaving
-            toggleActions: "play reverse play reverse", // State changes
+            start: "top 60%", 
+            end: "bottom 60%", 
+            toggleActions: "play reverse play reverse", 
           }
         }
       );
@@ -86,8 +122,12 @@ export class ScrollManager {
       
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
+        // Prevent auto-scroll if loading screen is active covering viewport
+        const loader = document.getElementById('scene-transition-loader');
+        if (loader && loader.style.opacity === '1') return;
+        
         this.resumeAutoScroll();
-      }, 2000); // Resume 2 seconds after scroll stops
+      }, 2000); 
     };
 
     window.addEventListener("wheel", onUserInteraction, { passive: true });

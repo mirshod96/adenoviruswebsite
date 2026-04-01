@@ -4,8 +4,7 @@ export class CanvasPlayer {
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.scenesMeta = null;
     
-    // Crucial memory boundary lock globally isolating DOM Heap structures
-    this.currentPreloadedScene = -1;
+    // Sliding Window Memory Strategy (Current-1, Current, Current+1)
     this.activeSceneCache = new Map();
 
     this.currentScene = 1;
@@ -29,63 +28,57 @@ export class CanvasPlayer {
     }
   }
 
-  // Pure Promise resolver fetching EXACTLY ONE FULL SCENE into DOM Memory Limits 
-  async preloadEntireScene(sceneNum, onProgress) {
-    const sceneKey = `${sceneNum}-scene`;
-    if (!this.scenesMeta || !this.scenesMeta[sceneKey]) {
-      if (onProgress) onProgress(100);
-      return;
-    }
-
-    if (this.currentPreloadedScene === sceneNum) {
-       if (onProgress) onProgress(100);
-       return;
-    }
-
-    // EXTREME GARBAGE COLLECTION STEP:
-    // This absolutely guarantees that our memory footprint never scales dynamically infinitely!
-    // We obliterate the previous scene references. 
-    // The Javascript GC will effortlessly dump the old 144 bitmaps freeing ~400MB instantly from GPU margins.
-    this.activeSceneCache.clear();
-    
-    // Optional brief frame visual clearance 
-    this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height); 
-
-    this.currentPreloadedScene = sceneNum;
-    
-    const count = this.scenesMeta[sceneKey].length;
-    let loadedCount = 0;
-
-    return new Promise((resolve) => {
-      // Linear iterative DOM allocation.
-      // Unlike Blob/Fetch which bottlenecks concurrency, Image nodes allocate parallel connections gracefully.
-      for (let i = 0; i < count; i++) {
-        const url = `/scenes/${sceneKey}/${this.scenesMeta[sceneKey][i]}`;
-        
-        const img = new Image();
-        img.fetchPriority = "high"; // Advise mobile Chromium heuristic
-        
-        const checkDone = () => {
-           loadedCount++;
-           if (onProgress) onProgress(Math.round((loadedCount / count) * 100));
-           if (loadedCount >= count) resolve();
-        };
-
-        img.onload = checkDone;
-        // Proceed gracefully on network interrupt to prevent app lock
-        img.onerror = checkDone; 
-        
-        img.src = url;
-        
-        // Cache node
-        this.activeSceneCache.set(i, img);
-      }
-    });
+  async preloadSceneToCache(sceneNum) {
+      if (!this.scenesMeta || sceneNum < 1 || sceneNum > 12) return;
+      const sceneKey = `${sceneNum}-scene`;
+      if (!this.scenesMeta[sceneKey]) return;
+      
+      if (this.activeSceneCache.has(sceneNum)) return; // Already cached
+      
+      const sceneMap = new Map();
+      this.activeSceneCache.set(sceneNum, sceneMap);
+      
+      const count = this.scenesMeta[sceneKey].length;
+      let loaded = 0;
+      
+      return new Promise((resolve) => {
+          for (let i = 0; i < count; i++) {
+              const url = `/scenes/${sceneKey}/${this.scenesMeta[sceneKey][i]}`;
+              const img = new Image();
+              
+              const checkDone = () => {
+                  loaded++;
+                  if (loaded >= count) resolve();
+              };
+              img.onload = checkDone;
+              img.onerror = checkDone;
+              
+              // Non-blocking background DOM allocation
+              img.src = url;
+              sceneMap.set(i, img);
+          }
+      });
   }
 
-  // Backwards compatibility for the main preloader
+  // Preloader hook for start 
   async preloadCriticalFrames(onProgress) {
-    return this.preloadEntireScene(1, onProgress);
+      if (!this.scenesMeta) return Promise.resolve();
+      return new Promise((resolve) => {
+          this.preloadSceneToCache(1).then(() => {
+              onProgress(100);
+              resolve();
+          });
+          
+          let pct = 0;
+          const fakeP = setInterval(() => {
+              pct += 5;
+              if (pct <= 95) onProgress(pct);
+              else clearInterval(fakeP);
+          }, 50);
+          
+          // Aggressively preempt scene 2 seamlessly in the background!
+          this.preloadSceneToCache(2);
+      });
   }
 
   resizeCanvas() {
@@ -103,9 +96,33 @@ export class CanvasPlayer {
     return this.scenesMeta[key].length;
   }
 
+  // Flushes out distant scenes mathematically preventing RAM OOM blackscreen crash
+  bufferWindow(activeSceneNum) {
+      // We only statically hold exactly 3 scenes mathematically (Previous, Current, Next)
+      const needed = [activeSceneNum - 1, activeSceneNum, activeSceneNum + 1];
+      
+      for (const [sNum, map] of this.activeSceneCache.entries()) {
+          if (!needed.includes(sNum)) {
+              // Flush safely from memory!
+              map.clear();
+              this.activeSceneCache.delete(sNum);
+          }
+      }
+      
+      // Dynamically initiate pre-fetching of upcoming horizons flawlessly seamlessly.
+      needed.forEach(n => {
+          if (n >= 1 && n <= 12) {
+             this.preloadSceneToCache(n); // Executes immediately without `await` block!
+          }
+      });
+  }
+
   setFrame(sceneNum, frameIndex) {
     this.targetScene = sceneNum;
     this.targetFrame = Math.floor(frameIndex);
+    
+    // Ensure sliding memory window bounds are strictly evaluated per GSAP tick
+    this.bufferWindow(this.targetScene);
     
     if (!this.isRendering) {
       this.isRendering = true;
@@ -123,9 +140,10 @@ export class CanvasPlayer {
   }
 
   renderCurrentFrame() {
-    // Zero latency O(1) array lookup. No networking fetch, no blob conversion, no buffering!
-    const img = this.activeSceneCache.get(this.currentFrame);
+    const sceneMap = this.activeSceneCache.get(this.currentScene);
+    if (!sceneMap) return;
     
+    const img = sceneMap.get(this.currentFrame);
     if (!img || !img.complete || img.naturalWidth === 0) return; 
     
     this.drawCover(img);

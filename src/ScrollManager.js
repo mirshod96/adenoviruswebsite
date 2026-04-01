@@ -12,48 +12,6 @@ export class ScrollManager {
     this.initScrollTracks();
   }
 
-  async forceSceneLoad(sceneNum) {
-    // Only intercept if the scene isn't already the dominant loaded chunk
-    if (this.canvasPlayer.currentPreloadedScene === sceneNum) return;
-    
-    // HARD LOCK user intent
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    
-    // Halt any active auto-scroll
-    if (this.autoScrollTween) {
-        this.autoScrollTween.kill();
-        this.autoScrollTween = null;
-    }
-    
-    const loader = document.getElementById('scene-transition-loader');
-    const fill = document.getElementById('scene-transition-fill');
-    const pctTxt = document.getElementById('scene-transition-pct');
-    
-    if (loader) {
-        loader.style.visibility = 'visible';
-        loader.style.opacity = '1';
-        loader.style.pointerEvents = 'all';
-    }
-    
-    // CPU/Network wipe boundary crossing point
-    await this.canvasPlayer.preloadEntireScene(sceneNum, (pct) => {
-         if(fill) fill.style.width = `${pct}%`;
-         if(pctTxt) pctTxt.textContent = `${pct}%`;
-    });
-    
-    if (loader) {
-        loader.style.opacity = '0';
-        loader.style.pointerEvents = 'none';
-        setTimeout(() => {
-            loader.style.visibility = 'hidden';
-        }, 500); // Wait for transition CSS to finish
-    }
-    
-    // UNLOCK user scroll
-    document.body.style.overflow = prevOverflow;
-  }
-
   async initScrollTracks() {
     await this.canvasPlayer.loadMetadata();
     
@@ -77,18 +35,15 @@ export class ScrollManager {
           end: "bottom top", 
           scrub: 1.0, 
           onUpdate: (self) => {
-             // CRITICAL: Block rendering GSAP ticks for scenes that are functionally wiped!
-             // This prevents "flicker" while the glass loader covers the transition.
-             if (self.isActive && this.canvasPlayer.currentPreloadedScene === sceneNum) {
+             if (self.isActive) {
+                // Continuous seamless frame tracking across boundary limits
                 this.canvasPlayer.setFrame(sceneNum, Math.round(proxy.frame));
              }
           },
           onEnter: () => {
-             this.forceSceneLoad(sceneNum);
              this.audioManager.playSceneAudio(sceneNum);
           },
           onEnterBack: () => {
-             this.forceSceneLoad(sceneNum);
              this.audioManager.playSceneAudio(sceneNum);
           }
         }
@@ -122,10 +77,6 @@ export class ScrollManager {
       
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
-        // Prevent auto-scroll if loading screen is active covering viewport
-        const loader = document.getElementById('scene-transition-loader');
-        if (loader && loader.style.opacity === '1') return;
-        
         this.resumeAutoScroll();
       }, 2000); 
     };

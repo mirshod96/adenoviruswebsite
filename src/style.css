@@ -224,49 +224,6 @@ p {
   box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
 }
 
-/* Scene Transition Loader */
-#scene-transition-loader {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.5s ease, visibility 0.5s ease;
-  color: white;
-  pointer-events: none;
-}
-
-.loader-content {
-  text-align: center;
-  font-family: var(--font-title);
-}
-
-.loader-bar-bg {
-  width: 300px;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  margin: 15px 0;
-  overflow: hidden;
-}
-
-.loader-bar-fill {
-  width: 0%;
-  height: 100%;
-  background: var(--primary-color);
-  border-radius: 4px;
-  transition: width 0.1s linear;
-}
-
 #loader-progress {
   font-family: var(--font-title);
   font-size: 1.4rem;

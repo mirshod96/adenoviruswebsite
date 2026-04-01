@@ -66,7 +66,10 @@ export class ScrollManager {
     this.resumeAutoScroll();
 
     let scrollTimeout;
-    const onUserInteraction = () => {
+    const onUserInteraction = (e) => {
+      // Prevent animation break when toggling sound
+      if (e && e.target && e.target.closest('#audio-toggle')) return;
+      
       if (this.autoScrollTween) {
         this.autoScrollTween.kill();
         this.autoScrollTween = null;
@@ -83,7 +86,7 @@ export class ScrollManager {
     window.addEventListener("mousedown", onUserInteraction, { passive: true });
     window.addEventListener("keydown", (e) => {
         if (['ArrowDown', 'ArrowUp', 'Space', 'PageDown', 'PageUp'].includes(e.code)) {
-            onUserInteraction();
+            onUserInteraction(e);
         }
     }, { passive: true });
   }

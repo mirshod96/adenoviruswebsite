@@ -23,14 +23,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const startOverlay = document.getElementById('start-overlay');
   const btnStart = document.getElementById('btn-start');
   const loaderProgress = document.getElementById('loader-progress');
+  const audioToggle = document.getElementById('audio-toggle');
 
-  btnStart.addEventListener('click', () => {
+  btnStart.addEventListener('click', async () => {
     if (audioManager.isMuted) {
-      audioManager.toggleMute();
+      await audioManager.toggleMute();
     }
     startOverlay.style.opacity = '0';
     startOverlay.style.visibility = 'hidden';
     scrollManager.startAutoScroll();
+  });
+  
+  audioToggle.addEventListener('click', async () => {
+      await audioManager.toggleMute();
+      audioToggle.innerHTML = audioManager.isMuted ? '<span class="icon">🔇</span>' : '<span class="icon">🔊</span>';
   });
   
   // Await the internal metadata manifest then trigger heavy preload

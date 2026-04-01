@@ -34,7 +34,7 @@ export class AudioManager {
      this.nodes.droneFilter.Q.value = 1.5;
      
      this.nodes.droneGain = this.ctx.createGain();
-     this.nodes.droneGain.gain.value = 0.12; 
+     this.nodes.droneGain.gain.value = 0.5; // Raised master Drone dB for immediate phone speaker audibility
      
      // Hardware Master
      this.nodes.masterGain = this.ctx.createGain();
@@ -161,8 +161,14 @@ export class AudioManager {
       osc.stop(this.ctx.currentTime + 0.3);
   }
 
-  toggleMute() {
+  async toggleMute() {
     if (!this.ctx) this.init();
+    
+    // STRICT iOS BYPASS: AudioContext must be explicitly resumed upon user tap
+    if (this.ctx.state === 'suspended') {
+        await this.ctx.resume();
+    }
+    
     this.isMuted = !this.isMuted;
     
     const targetVolume = this.isMuted ? 0 : 1.0;

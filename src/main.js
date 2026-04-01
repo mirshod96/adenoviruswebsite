@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnStart.addEventListener('click', () => {
     if (audioManager.isMuted) {
-      audioManager.toggleAudio();
+      audioManager.toggleMute();
     }
     startOverlay.style.opacity = '0';
     startOverlay.style.visibility = 'hidden';

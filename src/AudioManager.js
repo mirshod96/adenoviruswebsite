@@ -1,82 +1,153 @@
-import { Howl, Howler } from 'howler';
-
 export class AudioManager {
   constructor() {
+    this.ctx = null;
     this.isMuted = true;
-    this.audioTracks = {};
-    this.currentTrack = null;
+    this.trackBuffers = {}; // Object mapping sceneNum to { forward, reverse, duration }
     
-    // Load the 12 scene mp3s
-    for (let i = 1; i <= 12; i++) {
-       this.audioTracks[i] = new Howl({
-          src: [`/sound/${i}-scene.mp3`],
-          preload: false, // Don't crash mobile data bandwidth initially
-          volume: 0.8,
-          loop: false,
-          html5: true     // Recommended for large audio files on iOS to stream without blocking AudioContext memory
-       });
-    }
+    this.currentScene = null;
+    this.currentSource = null;
+    this.currentGain = null;
+    this.isReversing = false;
+    this.masterGainNode = null;
 
     this.toggleBtn = document.getElementById('audio-toggle');
     if (this.toggleBtn) {
       this.toggleBtn.addEventListener('click', () => this.toggleAudio());
     }
-    
-    // Start muted to comply with browser autoplay policies until user interacts
-    Howler.mute(this.isMuted);
   }
 
-  toggleAudio() {
+  async init() {
+     if (!this.ctx) {
+         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+         this.masterGainNode = this.ctx.createGain();
+         this.masterGainNode.gain.value = this.isMuted ? 0 : 0.8;
+         this.masterGainNode.connect(this.ctx.destination);
+     }
+     if (this.ctx.state === 'suspended') {
+         await this.ctx.resume();
+     }
+  }
+
+  async toggleAudio() {
+    await this.init();
     this.isMuted = !this.isMuted;
-    Howler.mute(this.isMuted);
     
-    // Explicit bypass for iOS Safari WebAudio AutoPlay strict block
-    if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume();
+    if (this.masterGainNode) {
+        this.masterGainNode.gain.setTargetAtTime(this.isMuted ? 0 : 0.8, this.ctx.currentTime, 0.1);
     }
-    
+
     if (this.isMuted) {
-      this.toggleBtn.querySelector('.icon').textContent = '🔈';
+      if (this.toggleBtn) this.toggleBtn.querySelector('.icon').textContent = '🔈';
     } else {
-      this.toggleBtn.querySelector('.icon').textContent = '🔊';
-      
-      // If unmuted, make sure the current track starts playing
-      if (this.currentTrack && !this.audioTracks[this.currentTrack].playing()) {
-         this.audioTracks[this.currentTrack].play();
-      }
+      if (this.toggleBtn) this.toggleBtn.querySelector('.icon').textContent = '🔊';
     }
   }
 
-  playSceneAudio(sceneNum) {
-    if (this.currentTrack === sceneNum) return;
-    
-    const previousTrack = this.currentTrack;
-    this.currentTrack = sceneNum;
-    
-    // Crossfade out the old track
-    if (previousTrack && this.audioTracks[previousTrack] && this.audioTracks[previousTrack].playing()) {
-      this.audioTracks[previousTrack].fade(0.8, 0, 500);
-      setTimeout(() => {
-        if (this.currentTrack !== previousTrack) { // Check that we didn't rapidly scroll back
-          this.audioTracks[previousTrack].stop();
-        }
-      }, 500);
-    }
-    
-    // Play the new track
-    if (this.audioTracks[sceneNum]) {
-      // Lazy load to bypass bulk memory preloading failure on mobile Safari
-      if (this.audioTracks[sceneNum].state() === 'unloaded') {
-          this.audioTracks[sceneNum].load();
+  async loadSceneAudio(sceneNum) {
+      if (this.trackBuffers[sceneNum]) return;
+      this.trackBuffers[sceneNum] = 'loading'; 
+
+      try {
+          const response = await fetch(`/sound/${sceneNum}-scene.mp3`);
+          const arrayBuffer = await response.arrayBuffer();
+          // We MUST ensure ctx is spun up to decode raw binaries
+          if (!this.ctx) await this.init();
+          
+          const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+          
+          // Physically manipulate memory for a true reverse audio sequence boundary
+          const reverseBuffer = this.ctx.createBuffer(
+              audioBuffer.numberOfChannels, 
+              audioBuffer.length, 
+              audioBuffer.sampleRate
+          );
+          
+          for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+              const dest = reverseBuffer.getChannelData(i);
+              const src = audioBuffer.getChannelData(i);
+              const totalLen = audioBuffer.length;
+              for (let j = 0; j < totalLen; j++) {
+                  dest[j] = src[totalLen - 1 - j];
+              }
+          }
+          
+          this.trackBuffers[sceneNum] = {
+              forward: audioBuffer,
+              reverse: reverseBuffer,
+              duration: audioBuffer.duration
+          };
+      } catch(e) {
+          console.error("Failed to load or reverse audio", e);
+          this.trackBuffers[sceneNum] = null;
       }
-      
-      this.audioTracks[sceneNum].volume(0);
-      this.audioTracks[sceneNum].play();
-      this.audioTracks[sceneNum].fade(0, 0.8, 500);
-    }
   }
 
-  playTick() {
-    // Legacy stub, no longer needed as we have full scene tracks
+  // Driven completely mathematically by GSAP engine frame clocks to ensure precision
+  syncAudioToFrame(sceneNum, frame, totalFrames, velocity) {
+      if (this.isMuted || !this.ctx) return;
+      
+      const buffers = this.trackBuffers[sceneNum];
+      
+      // If uninitialized, strictly fetch and build the binary inversion asynchronously 
+      if (!buffers) {
+          this.loadSceneAudio(sceneNum);
+          return;
+      }
+      if (buffers === 'loading') return;
+
+      const goingBackwards = velocity < -5; 
+      const goingForwards = velocity > 5;
+      let targetReverse = this.isReversing;
+
+      if (goingBackwards) targetReverse = true;
+      if (goingForwards) targetReverse = false;
+
+      // Swap streams dynamically based on GSAP scrub directional vectors
+      const needNewSource = (this.currentScene !== sceneNum) || 
+                            (!this.currentSource) || 
+                            (this.isReversing !== targetReverse);
+
+      if (needNewSource) {
+          if (this.currentSource) {
+              const oldGain = this.currentGain;
+              if (oldGain) {
+                  oldGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+                  const oldSource = this.currentSource;
+                  setTimeout(() => { try { oldSource.stop() } catch(e){} }, 200);
+              }
+          }
+          
+          this.currentScene = sceneNum;
+          this.isReversing = targetReverse;
+
+          let fraction = frame / totalFrames;
+          fraction = Math.max(0, Math.min(1, fraction));
+          
+          let startOffset = 0;
+          if (this.isReversing) {
+               // Crossfade the physical head of play mathematically inversely across standard bounds limits
+               startOffset = (1 - fraction) * buffers.duration;
+          } else {
+               startOffset = fraction * buffers.duration;
+          }
+          
+          const source = this.ctx.createBufferSource();
+          source.buffer = this.isReversing ? buffers.reverse : buffers.forward;
+          
+          const gainNode = this.ctx.createGain();
+          gainNode.gain.value = 0.01;
+          gainNode.gain.setTargetAtTime(1.0, this.ctx.currentTime, 0.05); // 50ms curve smooths all switching entirely 
+          
+          source.connect(gainNode);
+          gainNode.connect(this.masterGainNode);
+          
+          source.start(0, startOffset);
+          
+          this.currentSource = source;
+          this.currentGain = gainNode;
+      }
   }
+
+  // Fallbacks protecting ScrollManager legacy triggers
+  playSceneAudio() {} 
 }

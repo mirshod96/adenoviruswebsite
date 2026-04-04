@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>HyperVax: Vaksina Qutisi</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css">
+  </head>
+  <body>
+    <!-- Start Experience Overlay -->
+    <div id="start-overlay" class="start-overlay">
+      <div class="start-content">
+        <h1>Vaksina Qutisi</h1>
+        <p>Barcha imkoniyatlardan foydalanish uchun ovozni yoqing</p>
+        <div id="loader-progress">Yuklanmoqda: 0%</div>
+        <button id="btn-start" class="btn-primary" style="display: none;">Boshlash</button>
+        <a href="/" class="btn-primary" style="display: none; margin-left: 15px; background: rgba(255,255,255,0.1); border: 1px solid #fff;">Asosiy sahifa</a>
+      </div>
+    </div>
+
+    <!-- Fixed Elements -->
+    <canvas id="hero-canvas"></canvas>
+    <header class="site-header">
+      <a href="/"><img src="/logo.png" alt="HyperVax Logo" class="logo" /></a>
+    </header>
+
+    <div class="audio-control" id="audio-toggle">
+      <span class="icon">🔊</span>
+    </div>
+
+    <!-- Scroll Narrative Container -->
+    <main id="scrolly-container">
+      
+      <!-- Stage 1 -->
+      <section class="stage-section" id="stage-1" data-scene="1">
+      </section>
+      
+      <!-- Stage 2 -->
+      <section class="stage-section" id="stage-2" data-scene="2">
+        <div class="vaccine-card">
+          <h2>HyperVax: Molekulyar innovatsiya</h2>
+          <p><span class="pulsing-dot"></span> Tarkibi: Modifikatsiyalangan Adenovirus vektori.</p>
+          <p><span class="pulsing-dot"></span> Vazifasi: Angiotenzin II gormonini neytrallash.</p>
+          <p><span class="pulsing-dot"></span> Afzalligi: Bir marta emlash orqali uzoq muddatli barqaror qon bosimi.</p>
+        </div>
+      </section>
+
+      <!-- Stage 3 -->
+      <section class="stage-section" id="stage-3" data-scene="3">
+      </section>
+
+      <!-- Stage 4 -->
+      <section class="stage-section" id="stage-4" data-scene="4">
+      </section>
+
+      <!-- Stage 5 -->
+      <section class="stage-section" id="stage-5" data-scene="5">
+      </section>
+
+      <div class="scroll-pad"></div>
+    </main>
+
+    <script type="module" src="/src/vaccine-main.js"></script>
+  </body>
+</html>

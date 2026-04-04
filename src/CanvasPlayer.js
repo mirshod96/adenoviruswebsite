@@ -1,6 +1,9 @@
 export class CanvasPlayer {
-  constructor(canvasElement) {
+  constructor(canvasElement, metaUrl = '/scenes_meta.json', scenesBaseDir = '/scenes/') {
     this.canvas = canvasElement;
+    this.metaUrl = metaUrl;
+    this.scenesBaseDir = scenesBaseDir;
+    
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.scenesMeta = null;
     
@@ -21,7 +24,7 @@ export class CanvasPlayer {
 
   async loadMetadata() {
     try {
-      const res = await fetch('/scenes_meta.json');
+      const res = await fetch(this.metaUrl);
       this.scenesMeta = await res.json();
     } catch (err) {
       console.error('Error loading scenes metadata:', err);
@@ -29,7 +32,7 @@ export class CanvasPlayer {
   }
 
   async preloadSceneToCache(sceneNum) {
-      if (!this.scenesMeta || sceneNum < 1 || sceneNum > 12) return;
+      if (!this.scenesMeta || sceneNum < 1 || sceneNum > Object.keys(this.scenesMeta).length) return;
       const sceneKey = `${sceneNum}-scene`;
       if (!this.scenesMeta[sceneKey]) return;
       
@@ -43,7 +46,10 @@ export class CanvasPlayer {
       
       return new Promise((resolve) => {
           for (let i = 0; i < count; i++) {
-              const url = `/scenes/${sceneKey}/${this.scenesMeta[sceneKey][i]}`;
+              let url = `${this.scenesBaseDir}${sceneKey}/${this.scenesMeta[sceneKey][i]}`;
+              // Force paths matching Vite roots perfectly
+              if (!url.startsWith('/')) url = '/' + url;
+              
               const img = new Image();
               
               const checkDone = () => {
@@ -110,8 +116,9 @@ export class CanvasPlayer {
       }
       
       // Dynamically initiate pre-fetching of upcoming horizons flawlessly seamlessly.
+      const totalScenes = Object.keys(this.scenesMeta).length;
       needed.forEach(n => {
-          if (n >= 1 && n <= 12) {
+          if (n >= 1 && n <= totalScenes) {
              this.preloadSceneToCache(n); // Executes immediately without `await` block!
           }
       });

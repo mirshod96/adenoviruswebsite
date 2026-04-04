@@ -26,14 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let autoScrollTween = null;
 
-  btnStart.addEventListener('click', (e) => {
+  btnStart.addEventListener('click', () => {
+    if (audioManager.isMuted) {
+      audioManager.toggleAudio();
+    }
     startOverlay.style.opacity = '0';
     startOverlay.style.visibility = 'hidden';
     startAutoScroll();
-
-    if (audioManager.isMuted) {
-      audioManager.toggleAudio().catch(e => console.warn("Auto-play audio suspended"));
-    }
   });
   
   audioToggle.addEventListener('click', async () => {
@@ -152,14 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
           loaderProgress.textContent = `Yuklanmoqda: ${percent}%`;
       });
       loaderProgress.style.display = 'none';
-      
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('autostart') === '1') {
-          btnStart.click(); // Auto Sequence trigger
-      } else {
-          btnStart.style.display = 'inline-block';
-          document.querySelector('a.btn-primary').style.display = 'inline-block';
-      }
+      btnStart.style.display = 'inline-block';
+      document.querySelector('a.btn-primary').style.display = 'inline-block';
   });
   
   document.body.style.opacity = '1';

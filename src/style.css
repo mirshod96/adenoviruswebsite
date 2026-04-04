@@ -307,3 +307,55 @@ p {
   }
 }
 
+/* ========== ORIENTATION LOCK ========== */
+#orientation-warning {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: var(--bg-color);
+  z-index: 999999;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 30px;
+  color: white;
+}
+
+#orientation-warning .rotate-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  animation: spinPhone 2s infinite ease-in-out;
+}
+
+#orientation-warning h2 {
+  color: #00E5FF;
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+  font-family: var(--font-title);
+  font-weight: 800;
+}
+
+#orientation-warning p {
+  color: #ccc;
+  font-size: 1.1rem;
+}
+
+@keyframes spinPhone {
+  0% { transform: rotate(0deg); }
+  35% { transform: rotate(-90deg); }
+  70% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@media screen and (max-width: 1024px) and (orientation: portrait) {
+  #orientation-warning {
+    display: flex !important;
+  }
+}
+@media screen and (max-device-width: 1024px) and (orientation: portrait) {
+  #orientation-warning {
+    display: flex !important;
+  }
+}
+

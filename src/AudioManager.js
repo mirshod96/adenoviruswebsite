@@ -23,6 +23,12 @@ export class AudioManager {
          this.masterGainNode = this.ctx.createGain();
          this.masterGainNode.gain.value = this.isMuted ? 0 : 0.8;
          this.masterGainNode.connect(this.ctx.destination);
+
+         // iOS Unlock Pattern: Play silent oscillator synchronously inside the tap event stack
+         const unlockOsc = this.ctx.createOscillator();
+         unlockOsc.connect(this.ctx.destination);
+         unlockOsc.start(0);
+         unlockOsc.stop(this.ctx.currentTime + 0.001);
      }
      if (this.ctx.state === 'suspended') {
          await this.ctx.resume();

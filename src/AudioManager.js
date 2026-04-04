@@ -15,6 +15,12 @@ export class AudioManager {
     if (this.toggleBtn) {
       this.toggleBtn.addEventListener('click', () => this.toggleAudio());
     }
+
+    // Radical Fetch: Pre-warm the buffer streams blindly
+    setTimeout(() => {
+        this.loadSceneAudio(1);
+        this.loadSceneAudio(2);
+    }, 1500);
   }
 
   async init() {
@@ -31,8 +37,18 @@ export class AudioManager {
          unlockOsc.stop(this.ctx.currentTime + 0.001);
      }
      if (this.ctx.state === 'suspended') {
-         await this.ctx.resume();
+         this.ctx.resume().catch(()=>{});
      }
+
+     // Radical Global Unblocker: Bind tap listeners unconditionally
+     const globalUnlock = () => {
+         if (this.ctx && this.ctx.state === 'suspended') {
+             this.ctx.resume().catch(()=>{});
+         }
+     };
+     document.addEventListener('touchstart', globalUnlock, { passive: true });
+     document.addEventListener('touchend', globalUnlock, { passive: true });
+     document.addEventListener('click', globalUnlock, { passive: true });
   }
 
   async toggleAudio() {

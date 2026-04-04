@@ -26,13 +26,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let autoScrollTween = null;
 
-  btnStart.addEventListener('click', async () => {
-    if (audioManager.isMuted) {
-      await audioManager.toggleAudio();
-    }
+  btnStart.addEventListener('click', (e) => {
     startOverlay.style.opacity = '0';
     startOverlay.style.visibility = 'hidden';
     startAutoScroll();
+
+    if (audioManager.isMuted) {
+      audioManager.toggleAudio().catch(e => console.warn("Auto-play audio suspended"));
+    }
   });
   
   audioToggle.addEventListener('click', async () => {

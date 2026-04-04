@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const canvasElement = document.getElementById('hero-canvas');
   
   // Use generic parameters specifically targeting the new generated index
-  const audioManager = new AudioManager();
+  const audioManager = new AudioManager('/vaccine_audio/');
   const canvasPlayer = new CanvasPlayer(canvasElement, '/vaccine_meta.json', '/vaccine_box_scenes/');
   
   const startOverlay = document.getElementById('start-overlay');
@@ -82,11 +82,12 @@ document.addEventListener('DOMContentLoaded', () => {
                   x: 0,
                   y: isMobile() ? 0 : '-50%',
                   ease: "power2.out",
+                  duration: 0.8,
                   scrollTrigger: {
                       trigger: "#stage-2",
-                      start: "50% 60%", // Triggers when stage 2 is at 50%
-                      end: "100% 60%",
-                      scrub: 1.0, // Parallax binding
+                      start: "50% 60%", // Fade in starts exactly at 50%
+                      end: "bottom center",
+                      toggleActions: "play reverse play reverse", // Stays locked and visible 
                   }
               }
           );
@@ -150,8 +151,14 @@ document.addEventListener('DOMContentLoaded', () => {
           loaderProgress.textContent = `Yuklanmoqda: ${percent}%`;
       });
       loaderProgress.style.display = 'none';
-      btnStart.style.display = 'inline-block';
-      document.querySelector('a.btn-primary').style.display = 'inline-block';
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('autostart') === '1') {
+          btnStart.click(); // Auto Sequence trigger
+      } else {
+          btnStart.style.display = 'inline-block';
+          document.querySelector('a.btn-primary').style.display = 'inline-block';
+      }
   });
   
   document.body.style.opacity = '1';

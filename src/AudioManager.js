@@ -1,5 +1,6 @@
 export class AudioManager {
-  constructor() {
+  constructor(soundBaseDir = '/sound/') {
+    this.soundBaseDir = soundBaseDir;
     this.ctx = null;
     this.isMuted = true;
     this.trackBuffers = {}; // Object mapping sceneNum to { forward, reverse, duration }
@@ -48,7 +49,7 @@ export class AudioManager {
       this.trackBuffers[sceneNum] = 'loading'; 
 
       try {
-          const response = await fetch(`/sound/${sceneNum}-scene.mp3`);
+          const response = await fetch(`${this.soundBaseDir}${sceneNum}-scene.mp3`);
           const arrayBuffer = await response.arrayBuffer();
           // We MUST ensure ctx is spun up to decode raw binaries
           if (!this.ctx) await this.init();

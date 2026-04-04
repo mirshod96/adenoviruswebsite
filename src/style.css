@@ -241,7 +241,7 @@ p {
 /* ========== VACCINE BOX SPECIFICS ========== */
 
 .vaccine-card {
-  position: absolute;
+  position: fixed;
   right: 5%;
   top: 50%;
   transform: translateY(-50%) translateX(100px); 

@@ -41,6 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Sequence safely in browser memory, release the UI block
       loaderProgress.style.display = 'none';
       btnStart.style.display = 'inline-block';
+      const btnVaccine = document.getElementById('btn-vaccine');
+      if (btnVaccine) btnVaccine.style.display = 'inline-block';
   });
   
   // Extra layer for initial setup visibility
